@@ -5,12 +5,12 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildActivity } from "../scripts/lib/activity.mjs";
-import { chooseArticles, parseCurriculum } from "../scripts/lib/extract.mjs";
+import { chooseArticles, manifestDigestArticles, paperCountFromManifest, parseCurriculum, parseSiteManifest } from "../scripts/lib/extract.mjs";
 import { escapeHtml, makeHref, tagHref } from "../scripts/lib/html.mjs";
 import { loadConfig } from "../scripts/lib/registry.mjs";
 import { eachDate, shanghaiDateKey } from "../scripts/lib/time.mjs";
 import { buildSite } from "../scripts/build.mjs";
-import { refreshHub } from "../scripts/refresh.mjs";
+import { publicationStatus, refreshHub } from "../scripts/refresh.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -209,6 +209,63 @@ test("页面会转义提交说明，并带上 Pages 子路径", async () => {
   assert.match(tagPage, /窗光/);
   assert.equal(tagHref("/han-learning-hub", "摄影审美"), "/han-learning-hub/tags/%E6%91%84%E5%BD%B1%E5%AE%A1%E7%BE%8E/");
   await rm(out, { recursive: true, force: true });
+});
+
+test("site.json 只收录已写入的每日解读，并链到站点当天页面", () => {
+  const manifest = parseSiteManifest(JSON.stringify({
+    schema_version: 1,
+    url: "https://57cx.github.io/robot-grasp-papers/",
+    sections: [{ id: "daily", title: "每日前沿", path: "daily.html" }],
+    data: {
+      daily_index: "data/daily/index.json",
+      daily_digest: "data/daily/YYYY-MM-DD.json",
+    },
+    counts: { papers: 145 },
+    latest_digest: null,
+  }));
+  const site = {
+    id: "robot-research",
+    topic: "科研：四足+机械臂精细抓取",
+    repo: "57cx/robot-grasp-papers",
+    branch: "main",
+    pagesUrl: "https://57cx.github.io/robot-grasp-papers/",
+  };
+  assert.equal(paperCountFromManifest(manifest), 145);
+  const empty = chooseArticles(site, {
+    manifest,
+    dailyIndex: { dates: [] },
+    digests: {},
+    paths: ["2026-01-04/窗光/01.jpg"],
+  });
+  assert.deepEqual(empty, []);
+  const digest = {
+    date: "2026-11-13",
+    source_query: "data/arxiv_raw/2026-11-13.json",
+    overview_zh: "今天核对了一篇。",
+    items: [{
+      title: "A Real Paper",
+      authors: ["A"],
+      arxiv_url: "https://arxiv.org/abs/1234.5678",
+      categories: ["cs.RO"],
+      summary_zh: "问题、方法、结果都来自论文。",
+      analysis_zh: "分析",
+      relevance_zh: "和硬件有关",
+      score: 8,
+      priority: "高",
+      tags: ["抓取"],
+    }],
+  };
+  const articles = manifestDigestArticles(site, manifest, { dates: ["2026-11-13"] }, { "2026-11-13": digest });
+  assert.equal(articles.length, 1);
+  assert.equal(articles[0].title, "A Real Paper");
+  assert.equal(articles[0].summary, "问题、方法、结果都来自论文。");
+  assert.equal(articles[0].url, "https://57cx.github.io/robot-grasp-papers/daily.html?date=2026-11-13");
+  assert.equal(articles[0].publishedAt, "2026-11-13");
+  assert.ok(articles[0].tags.includes("抓取"));
+  assert.equal(publicationStatus({ pagesLive: true, articles: [], paperCount: 145 }), "live");
+  assert.equal(publicationStatus({ pagesLive: true, articles: [], paperCount: null }), "building");
+  assert.equal(publicationStatus({ pagesLive: true, articles: [{ id: "1" }] }), "live");
+  assert.equal(publicationStatus({ pagesLive: false, articles: [{ id: "1" }], paperCount: 145 }), "building");
 });
 
 test("配置只接受完整条目", () => {

@@ -154,6 +154,66 @@ export function parseCurriculum(markdown) {
   return map;
 }
 
+export function parseSiteManifest(text) {
+  if (!text) return null;
+  try {
+    const data = JSON.parse(String(text).replace(/^\uFEFF/, ""));
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export function paperCountFromManifest(manifest) {
+  const count = manifest?.counts?.papers;
+  return Number.isInteger(count) && count >= 0 ? count : null;
+}
+
+export function digestFilePath(pattern, date) {
+  if (typeof pattern !== "string" || !pattern.includes("YYYY-MM-DD")) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  return pattern.replaceAll("YYYY-MM-DD", date);
+}
+
+function dailyPageUrl(site, manifest, date) {
+  const section = (manifest.sections || []).find((item) => item && item.id === "daily" && item.path);
+  const root = site.pagesUrl || manifest.url || "";
+  if (!section || !root) return root;
+  const url = new URL(String(section.path).replace(/^\//, ""), root.endsWith("/") ? root : `${root}/`);
+  url.searchParams.set("date", date);
+  return url.toString();
+}
+
+export function manifestDigestArticles(site, manifest, index, digests = {}) {
+  if (!manifest?.data || typeof manifest.data.daily_index !== "string") return null;
+  if (!index || !Array.isArray(index.dates)) return null;
+  const articles = [];
+  for (const date of index.dates) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const digest = digests[date];
+    if (!digest || !Array.isArray(digest.items)) continue;
+    const sourcePath = digestFilePath(manifest.data.daily_digest, date);
+    const url = dailyPageUrl(site, manifest, date);
+    digest.items.forEach((item, itemIndex) => {
+      const title = plainText(item?.title, 180);
+      if (!title) return;
+      articles.push({
+        ...articleBase(site, [...asList(item.tags), ...asList(item.categories)]),
+        id: `${site.id}:${date}:${itemIndex}:${title}`,
+        title,
+        summary: plainText(item.summary_zh || "", 180),
+        url,
+        image: "",
+        publishedAt: /^\d{4}-\d{2}-\d{2}$/.test(digest.date) ? digest.date : date,
+        sourcePath,
+        source: "manifest-digest",
+      });
+    });
+  }
+  return articles;
+}
+
 export function tryParseCatalog(text) {
   if (!text || !text.includes("{")) return null;
   try {
@@ -355,6 +415,10 @@ export function articlesFromDateFolders(site, paths) {
 }
 
 export function chooseArticles(site, input) {
+  if (input.dailyIndex) {
+    const fromManifest = manifestDigestArticles(site, input.manifest, input.dailyIndex, input.digests || {});
+    if (fromManifest) return fromManifest;
+  }
   if (input.feedJson != null) {
     const items = parseFeedJson(input.feedJson);
     if (items) return articlesFromFeed(site, items);

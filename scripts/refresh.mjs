@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { activityRange, buildActivity, stampArticles } from "./lib/activity.mjs";
-import { chooseArticles, classifyTree } from "./lib/extract.mjs";
+import { chooseArticles, classifyTree, digestFilePath, paperCountFromManifest, parseSiteManifest } from "./lib/extract.mjs";
 import { GitHub, githubToken, mapPool } from "./lib/github.mjs";
 import { activityBots, isUpcoming, loadConfig } from "./lib/registry.mjs";
 import { shanghaiDateKey, todayKey } from "./lib/time.mjs";
@@ -68,7 +68,12 @@ async function loadRepo(github, bot) {
   }
   const branch = repo.default_branch || "main";
   const pages = await github.request(`/repos/${bot.repo}/pages`);
-  const pagesUrl = pages?.html_url || "";
+  let pagesUrl = pages?.html_url || "";
+  let pagesLive = Boolean(pagesUrl);
+  if (!pagesLive && bot.url && await urlIsLive(bot.url)) {
+    pagesLive = true;
+    pagesUrl = bot.url;
+  }
   const tree = await github.request(`/repos/${bot.repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`);
   const truncated = Boolean(tree?.truncated);
   const paths = (tree?.tree || []).filter((item) => item.type === "blob").map((item) => item.path);
@@ -82,6 +87,9 @@ async function loadRepo(github, bot) {
   for (const filePath of classes.markdown.slice(0, 200)) {
     markdown.push({ path: filePath, text: await readTextFile(github, bot.repo, branch, filePath) });
   }
+  const manifestText = paths.includes("site.json") ? await readTextFile(github, bot.repo, branch, "site.json") : "";
+  const manifest = parseSiteManifest(manifestText);
+  const daily = await loadDailyDigests(github, bot.repo, branch, paths, manifest);
   const summaries = await github.paginate(`/repos/${bot.repo}/commits?sha=${encodeURIComponent(branch)}`);
   const details = await mapPool(summaries, 6, (item) => github.request(`/repos/${bot.repo}/commits/${item.sha}`));
   const commits = details.filter(Boolean).map(slimCommit);
@@ -95,6 +103,9 @@ async function loadRepo(github, bot) {
     repoUrl: repo.html_url,
   };
   let articles = chooseArticles(site, {
+    manifest,
+    dailyIndex: daily.index,
+    digests: daily.digests,
     feedJson: classes.feedJson ? texts[classes.feedJson] : null,
     feedXml: classes.feedXml ? texts[classes.feedXml] : null,
     markdown,
@@ -108,17 +119,50 @@ async function loadRepo(github, bot) {
     missing: false,
     fetchError: false,
     truncated,
-    pagesLive: Boolean(pagesUrl),
+    pagesLive,
+    paperCount: paperCountFromManifest(manifest),
     commits,
     articles,
     lastCommitAt: commits[0]?.date || repo.pushed_at || null,
   };
 }
 
+export function publicationStatus(record) {
+  if (!record.pagesLive) return "building";
+  if ((record.articles?.length || 0) > 0 || Number.isInteger(record.paperCount)) return "live";
+  return "building";
+}
+
 function statusFor(record) {
   if (record.kind === "worker") return "worker";
-  if (!record.pagesLive || record.articles.length === 0) return "building";
-  return "live";
+  return publicationStatus(record);
+}
+
+async function urlIsLive(url) {
+  try {
+    const response = await fetch(url, { redirect: "follow", headers: { "User-Agent": "han-learning-hub" } });
+    return response.status >= 200 && response.status < 400;
+  } catch {
+    return false;
+  }
+}
+
+async function loadDailyDigests(github, repo, branch, paths, manifest) {
+  const indexPath = manifest?.data?.daily_index;
+  if (typeof indexPath !== "string") return { index: null, digests: {} };
+  let index = { dates: [] };
+  if (paths.includes(indexPath)) {
+    const parsed = parseSiteManifest(await readTextFile(github, repo, branch, indexPath));
+    if (parsed && Array.isArray(parsed.dates)) index = { dates: parsed.dates };
+  }
+  const digests = {};
+  for (const date of index.dates) {
+    const filePath = digestFilePath(manifest.data.daily_digest, date);
+    if (!filePath || !paths.includes(filePath)) continue;
+    const digest = parseSiteManifest(await readTextFile(github, repo, branch, filePath));
+    if (digest) digests[date] = digest;
+  }
+  return { index, digests };
 }
 
 function publicSite(configSite, record) {
@@ -166,6 +210,7 @@ function publicSite(configSite, record) {
     lastCommitAt: record.lastCommitAt,
     commitCount: record.commits.length,
     articleCount: record.articles.length,
+    paperCount: Number.isInteger(record.paperCount) ? record.paperCount : null,
     warning: record.truncated ? "文件树过大，文章可能不完整" : "",
     error: record.missing ? "仓库不存在" : "",
   };

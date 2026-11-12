@@ -33,6 +33,7 @@ export function activityBots(config) {
     name: site.name,
     topic: site.topic,
     repo: site.repo,
+    url: site.url || "",
     kind: "site",
   }));
   sites.push({
