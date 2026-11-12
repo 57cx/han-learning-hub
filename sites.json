@@ -42,6 +42,16 @@
       "tags": ["每周课程"]
     },
     {
+      "id": "robot-research",
+      "name": "智爪 · 论文库",
+      "topic": "科研：四足+机械臂精细抓取",
+      "bot": "智爪 · 科研助手",
+      "repo": "57cx/robot-grasp-papers",
+      "url": "https://57cx.github.io/robot-grasp-papers/",
+      "cover": "covers/robot.svg",
+      "intro": "四足携机械臂的精细抓取论文库：每天一篇前沿解读，并附阅读计划。"
+    },
+    {
       "id": "photography",
       "name": "光影",
       "topic": "摄影",
