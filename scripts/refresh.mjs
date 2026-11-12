@@ -76,8 +76,10 @@ async function loadRepo(github, bot) {
   }
   const tree = await github.request(`/repos/${bot.repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`);
   const truncated = Boolean(tree?.truncated);
-  const paths = (tree?.tree || []).filter((item) => item.type === "blob").map((item) => item.path);
-  const classes = classifyTree(paths);
+  const blobs = (tree?.tree || []).filter((item) => item.type === "blob");
+  const paths = blobs.map((item) => item.path);
+  const sizes = Object.fromEntries(blobs.map((item) => [item.path, item.size]));
+  const classes = classifyTree(paths, sizes);
   const texts = {};
   const wanted = [classes.feedJson, classes.feedXml, classes.catalog, classes.curriculum].filter(Boolean);
   for (const filePath of wanted) {
@@ -86,6 +88,14 @@ async function loadRepo(github, bot) {
   const markdown = [];
   for (const filePath of classes.markdown.slice(0, 200)) {
     markdown.push({ path: filePath, text: await readTextFile(github, bot.repo, branch, filePath) });
+  }
+  const html = [];
+  for (const filePath of classes.html.slice(0, 80)) {
+    html.push({ path: filePath, text: await readTextFile(github, bot.repo, branch, filePath) });
+  }
+  const jsonDocs = [];
+  for (const filePath of classes.jsonIndexes.slice(0, 40)) {
+    jsonDocs.push({ path: filePath, text: await readTextFile(github, bot.repo, branch, filePath) });
   }
   const manifestText = paths.includes("site.json") ? await readTextFile(github, bot.repo, branch, "site.json") : "";
   const manifest = parseSiteManifest(manifestText);
@@ -109,6 +119,8 @@ async function loadRepo(github, bot) {
     feedJson: classes.feedJson ? texts[classes.feedJson] : null,
     feedXml: classes.feedXml ? texts[classes.feedXml] : null,
     markdown,
+    html,
+    jsonDocs,
     catalogText: classes.catalog ? texts[classes.catalog] : "",
     curriculumText: classes.curriculum ? texts[classes.curriculum] : "",
     paths,

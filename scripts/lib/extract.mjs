@@ -1,6 +1,20 @@
 import { dateKeyFrom } from "./time.mjs";
 
-const MARKDOWN_ROOTS = ["posts/", "articles/", "content/", "lessons/", "src/content/"];
+const SKIP_DIRS = new Set([
+  "node_modules", "vendor", "dist", "_site", ".github", "scripts", "tests",
+  "_includes", "_layouts", "assets", ".jekyll-cache",
+]);
+const SKIP_MARKDOWN = /^(readme|writing_guide|contributing|license|changelog|code_of_conduct)\.mdx?$/i;
+const CHROME_LAYOUTS = new Set(["category", "page", "default", "base", "taxonomy"]);
+const CONTENT_DIRS = /(?:^|\/)(_posts|posts|articles|notes|days|lessons)(?:\/|$)/;
+
+function skippedPath(filePath) {
+  return String(filePath).split("/").some((part) => part.startsWith(".") || SKIP_DIRS.has(part));
+}
+
+function layoutName(value) {
+  return String(value || "").replace(/\.njk$/i, "").toLowerCase();
+}
 
 export function plainText(value, max = 180) {
   const text = String(value || "")
@@ -53,10 +67,24 @@ export function githubTreeUrl(repo, branch, filePath) {
 
 export function isMarkdownArticle(path) {
   if (!/\.mdx?$/i.test(path)) return false;
-  if (/(^|\/)README\.md$/i.test(path)) return false;
-  if (path.startsWith(".") || path.split("/").some((part) => part.startsWith("."))) return false;
-  if (/^(node_modules|dist|tests|scripts|.github)\//.test(path)) return false;
-  return MARKDOWN_ROOTS.some((root) => path.startsWith(root));
+  if (skippedPath(path)) return false;
+  return !SKIP_MARKDOWN.test(path.split("/").pop());
+}
+
+export function isHtmlPage(path) {
+  if (!/\.html?$/i.test(path)) return false;
+  if (skippedPath(path)) return false;
+  const base = path.split("/").pop().toLowerCase();
+  return base !== "404.html" && base !== "index.html";
+}
+
+export function isJsonIndex(path) {
+  if (!/\.json$/i.test(path)) return false;
+  if (skippedPath(path)) return false;
+  const base = path.split("/").pop().toLowerCase();
+  if (base === "package.json" || base === "package-lock.json" || base === "site.json") return false;
+  if (base.endsWith(".schema.json") || base === "tsconfig.json") return false;
+  return true;
 }
 
 export function parseFrontmatter(raw) {
@@ -293,30 +321,124 @@ export function articlesFromFeed(site, items) {
   }).filter(Boolean);
 }
 
+function contentPermalink(filePath) {
+  const base = filePath.split("/").pop().replace(/\.mdx?$/i, "");
+  if (CONTENT_DIRS.test(filePath) && /(?:^|\/)articles(?:\/|$)/.test(filePath)) {
+    return `/articles/${base.replace(/^\d{4}-\d{2}-\d{2}-/, "")}/`;
+  }
+  const post = base.match(/^(\d{4})-(\d{2})-(\d{2})-(.+)$/);
+  if (post && /(?:^|\/)_posts(?:\/|$)/.test(filePath)) {
+    return `/${post[1]}/${post[2]}/${post[3]}/${post[4]}/`;
+  }
+  return "";
+}
+
+function firstMedia(body) {
+  const markdown = String(body).match(/!\[[^\]]*\]\(([^)\s]+)\)/);
+  if (markdown) return markdown[1];
+  const image = String(body).match(/<img[^>]+src=["']([^"']+)["']/i);
+  return image ? image[1] : "";
+}
+
+function articlePageUrl(site, filePath, explicit) {
+  const permalink = explicit || contentPermalink(filePath);
+  const fallback = githubBlobUrl(site.repo, site.branch, filePath);
+  return resolveLink(site, permalink, fallback);
+}
+
+function articleImage(site, image, pageUrl, filePath) {
+  if (!image) return "";
+  if (/^https?:\/\//i.test(image)) return image;
+  if (image.startsWith("/") && site.pagesUrl) return resolveImage(site, image, filePath);
+  if (site.pagesUrl && pageUrl && !image.startsWith("/")) {
+    const base = pageUrl.endsWith("/") ? pageUrl : pageUrl.replace(/[^/]*$/, "");
+    try {
+      return new URL(image.replace(/^\.\//, ""), base).toString();
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function frontmatterTags(data) {
+  return asList(data.tags)
+    .concat(asList(data.categories), asList(data.category), asList(data.topic), asList(data.section), asList(data.seasons), asList(data.styles));
+}
+
+function keepMarkdown(file, data) {
+  if (data.draft === true || data.draft === "true" || data.draft === "yes") return false;
+  const layout = layoutName(data.layout);
+  if (CHROME_LAYOUTS.has(layout)) return false;
+  if (CONTENT_DIRS.test(file.path) || layout === "article") return true;
+  return Boolean(data.date || data.pubDate || data.day || dateFromPath(file.path));
+}
+
 export function articlesFromMarkdown(site, files) {
   const articles = [];
   for (const file of files) {
     const { data, body } = parseFrontmatter(file.text);
-    if (data.draft === true || data.draft === "true" || data.draft === "yes") continue;
+    if (!keepMarkdown(file, data)) continue;
     const title = plainText(data.title || heading(body) || titleFromPath(file.path), 120);
     if (!title) continue;
     const publishedAt = dateKeyFrom(data.date || data.pubDate) || dateFromPath(file.path);
     const summary = plainText(data.summary || data.description || data.excerpt || firstParagraph(body), 180);
-    const tags = asList(data.tags).concat(asList(data.categories));
-    const imagePath = data.image || data.cover || data.hero || "";
+    const url = articlePageUrl(site, file.path, data.url || data.permalink);
+    const imagePath = data.image || data.cover || data.hero || firstMedia(body);
     articles.push({
-      ...articleBase(site, tags),
+      ...articleBase(site, frontmatterTags(data)),
       id: `${site.id}:${file.path}`,
       title,
       summary,
-      url: resolveLink(site, data.url || data.permalink, githubBlobUrl(site.repo, site.branch, file.path)),
-      image: imagePath ? resolveImage(site, imagePath, file.path) : "",
+      url,
+      image: articleImage(site, imagePath, url, file.path),
       publishedAt,
       sourcePath: file.path,
       source: "markdown",
     });
   }
   return articles;
+}
+
+function tagText(source, tag) {
+  const matched = String(source).match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
+  return matched ? plainText(matched[1], 180) : "";
+}
+
+export function articlesFromHtml(site, files) {
+  const articles = [];
+  for (const file of files) {
+    const { data, body } = parseFrontmatter(file.text);
+    if (CHROME_LAYOUTS.has(layoutName(data.layout))) continue;
+    const title = plainText(data.title || tagText(body, "h1") || tagText(file.text, "title"), 120);
+    if (!title || title === "首页") continue;
+    const url = articlePageUrl(site, file.path, data.url || data.permalink || `/${file.path}`);
+    articles.push({
+      ...articleBase(site, frontmatterTags(data)),
+      id: `${site.id}:${file.path}`,
+      title,
+      summary: plainText(data.summary || data.description || tagText(file.text, "p"), 180),
+      url,
+      image: articleImage(site, data.image || data.cover || firstMedia(body || file.text), url, file.path),
+      publishedAt: dateKeyFrom(data.date || data.pubDate) || dateFromPath(file.path),
+      sourcePath: file.path,
+      source: "html",
+    });
+  }
+  return articles;
+}
+
+export function articlesFromJsonDocument(site, file) {
+  let data;
+  try {
+    data = JSON.parse(String(file.text).replace(/^\uFEFF/, ""));
+  } catch {
+    return [];
+  }
+  if (!data || data.status === "uninterpreted_candidates") return [];
+  const items = Array.isArray(data) ? data : ["articles", "posts", "entries", "lessons"].map((key) => data[key]).find(Array.isArray);
+  if (!Array.isArray(items) || !items.some((item) => item && item.title)) return [];
+  return articlesFromFeed(site, items);
 }
 
 function heading(body) {
@@ -427,10 +549,12 @@ export function chooseArticles(site, input) {
     const items = parseFeedXml(input.feedXml);
     if (items) return articlesFromFeed(site, items);
   }
-  if (input.markdown?.length) {
-    const articles = articlesFromMarkdown(site, input.markdown);
-    if (articles.length) return articles;
-  }
+  const collected = [
+    ...(input.markdown?.length ? articlesFromMarkdown(site, input.markdown) : []),
+    ...(input.html?.length ? articlesFromHtml(site, input.html) : []),
+    ...(input.jsonDocs?.length ? input.jsonDocs.flatMap((file) => articlesFromJsonDocument(site, file)) : []),
+  ];
+  if (collected.length) return dedupeArticles(collected);
   const catalog = tryParseCatalog(input.catalogText);
   if (catalog) return articlesFromCatalog(site, catalog, input.curriculumText);
   return articlesFromDateFolders(site, input.paths || []);
@@ -439,13 +563,33 @@ export function chooseArticles(site, input) {
 const FEED_JSON = ["feed.json", "articles.json", "hub-feed.json", "data/feed.json", "data/articles.json"];
 const FEED_XML = ["feed.xml", "rss.xml", "atom.xml", "index.xml"];
 
-export function classifyTree(paths) {
+function smallEnough(path, sizes) {
+  const size = sizes?.[path];
+  return size == null || size < 400_000;
+}
+
+export function dedupeArticles(articles) {
+  const seen = new Set();
+  const out = [];
+  for (const article of articles) {
+    const key = article.url || article.sourcePath || article.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(article);
+  }
+  return out;
+}
+
+export function classifyTree(paths, sizes = {}) {
   const set = new Set(paths);
+  const keep = (path) => smallEnough(path, sizes);
   return {
     feedJson: FEED_JSON.find((path) => set.has(path)) || null,
     feedXml: FEED_XML.find((path) => set.has(path)) || null,
     catalog: set.has("catalog.js") ? "catalog.js" : null,
     curriculum: set.has("curriculum.md") ? "curriculum.md" : null,
-    markdown: paths.filter(isMarkdownArticle),
+    markdown: paths.filter((path) => keep(path) && isMarkdownArticle(path)),
+    html: paths.filter((path) => keep(path) && isHtmlPage(path)),
+    jsonIndexes: paths.filter((path) => keep(path) && isJsonIndex(path)),
   };
 }
