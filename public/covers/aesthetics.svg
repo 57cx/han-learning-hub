@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="审美">
+  <rect width="1200" height="800" fill="#f4ecdf"/>
+  <circle cx="820" cy="390" r="210" fill="#8d3b2c"/>
+  <circle cx="820" cy="390" r="248" fill="none" stroke="#8a6a32" stroke-width="3"/>
+  <path d="M140 180h280" stroke="#1c1916" stroke-width="3"/>
+  <text x="140" y="300" fill="#1c1916" font-family="Songti SC, STSong, Palatino, serif" font-size="120">审美</text>
+  <text x="144" y="360" fill="#5c554c" font-family="Songti SC, STSong, Palatino, serif" font-size="28">每天一篇</text>
+</svg>

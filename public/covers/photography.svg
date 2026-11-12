@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="摄影">
+  <rect width="1200" height="800" fill="#f7f3ec"/>
+  <circle cx="430" cy="390" r="180" fill="none" stroke="#1c1916" stroke-width="3"/>
+  <circle cx="430" cy="390" r="70" fill="none" stroke="#8d3b2c" stroke-width="10"/>
+  <path d="M430 170v50M430 560v50M210 390h50M600 390h50" stroke="#1c1916" stroke-width="3"/>
+  <text x="700" y="390" fill="#1c1916" font-family="Songti SC, STSong, Palatino, serif" font-size="108">摄影</text>
+  <text x="706" y="450" fill="#5c554c" font-family="Songti SC, STSong, Palatino, serif" font-size="28">即将加入</text>
+</svg>

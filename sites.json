@@ -1,0 +1,56 @@
+{
+  "title": "涵的学习馆",
+  "owner": "57cx",
+  "hubRepo": "57cx/han-learning-hub",
+  "siteUrl": "https://57cx.github.io/han-learning-hub/",
+  "basePath": "/han-learning-hub",
+  "worker": {
+    "id": "worker",
+    "bot": "worker",
+    "topic": "学习馆"
+  },
+  "sites": [
+    {
+      "id": "aesthetics-daily",
+      "name": "每日审美",
+      "topic": "审美",
+      "bot": "云观 · 审美老师",
+      "repo": "57cx/aesthetics-daily",
+      "url": "https://57cx.github.io/aesthetics-daily/",
+      "cover": "covers/aesthetics.svg",
+      "intro": "零基础审美学习网站，每天一篇。"
+    },
+    {
+      "id": "mens-style-guide",
+      "name": "男生穿搭",
+      "topic": "穿搭",
+      "bot": "衣见 · 穿搭老师",
+      "repo": "57cx/mens-style-guide",
+      "url": "https://57cx.github.io/mens-style-guide/",
+      "cover": "covers/style.svg",
+      "intro": "男生穿搭学习站，每天更新。"
+    },
+    {
+      "id": "aesthetic-weekly",
+      "name": "观照",
+      "topic": "摄影审美",
+      "bot": "观照",
+      "repo": "57cx/aesthetic-weekly",
+      "url": "https://57cx.github.io/aesthetic-weekly/",
+      "cover": "covers/weekly.svg",
+      "intro": "每周一课的摄影审美画册：光、构图与观看。",
+      "tags": ["每周课程"]
+    },
+    {
+      "id": "photography",
+      "name": "光影",
+      "topic": "摄影",
+      "bot": "光影 · 摄影老师",
+      "repo": "",
+      "url": "",
+      "cover": "covers/photography.svg",
+      "intro": "摄影课即将接入。仓库准备好后，填上 repo 与网址即可。",
+      "status": "upcoming"
+    }
+  ]
+}

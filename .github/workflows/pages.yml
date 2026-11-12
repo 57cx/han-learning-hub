@@ -1,0 +1,53 @@
+name: 发布学习馆
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # 08:30 Asia/Shanghai，北京时间无夏令时
+    - cron: "30 0 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 测试
+        run: node --test tests/*.test.mjs
+      - name: 从 GitHub 读取各站点
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/refresh.mjs
+      - name: 生成静态页面
+        env:
+          BASE_PATH: /han-learning-hub
+        run: node scripts/build.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
