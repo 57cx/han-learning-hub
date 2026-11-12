@@ -49,7 +49,7 @@
 1. 仓库根目录的 `site.json`。若其中声明了 `data.daily_index` 和 `data.daily_digest`，只收录索引里的每日解读；论文数量用 `counts.papers`。某天没有解读文件，就不会出现在今日更新里。
 2. 仓库根目录或 `data/` 里的 `feed.json`、`articles.json`、`hub-feed.json`
 3. `feed.xml`、`rss.xml`、`atom.xml`、`index.xml`
-4. `posts/`、`articles/`、`content/`、`lessons/`、`src/content/` 下的 Markdown（跳过 `README.md` 和 `draft: true`）
+4. 任意目录里的 Markdown、HTML 页面，以及带 `articles` / `posts` / `entries` 的 JSON 索引。导航页、关于页和 README 不算文章。站点已发布时链到页面；还没有 Pages 时链到 GitHub 上的文件，卡片保持建设中。
 5. 根目录 `catalog.js` 里的 `weeks`（观照现在就是这种）
 6. `YYYY-MM-DD/题材名/` 文件夹里的图片或文档
 

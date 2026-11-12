@@ -64,6 +64,7 @@ export function todayKey(now = new Date()) {
 export function dateKeyFrom(value) {
   if (!value) return null;
   const text = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const lead = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (lead) return lead[1];
   return shanghaiDateKey(text);
 }

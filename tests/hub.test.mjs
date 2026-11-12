@@ -268,6 +268,105 @@ test("site.json 只收录已写入的每日解读，并链到站点当天页面"
   assert.equal(publicationStatus({ pagesLive: false, articles: [{ id: "1" }], paperCount: 145 }), "building");
 });
 
+test("Jekyll 文章和 Eleventy 文章能链到已发布页面", () => {
+  const aesthetics = {
+    id: "aesthetics-daily",
+    topic: "审美",
+    repo: "57cx/aesthetics-daily",
+    branch: "main",
+    pagesUrl: "https://57cx.github.io/aesthetics-daily/",
+  };
+  const lesson = chooseArticles(aesthetics, {
+    markdown: [
+      {
+        path: "_posts/2026-11-12-day-01-liubai.md",
+        text: `---
+title: "留白：空出来的地方，也在说话"
+description: "用两张南宋册页看一件事。"
+date: 2026-11-12 09:00:00 +0800
+permalink: /days/01/
+image: /assets/images/day-01/ma-yuan-watching-deer.jpg
+layout: article
+category: 基础理论
+topic: 留白
+---
+正文`,
+      },
+      {
+        path: "about.md",
+        text: "---\nlayout: page\ntitle: 关于\npermalink: /about/\n---\n介绍",
+      },
+      {
+        path: "categories/foundations.md",
+        text: "---\nlayout: category\ntitle: 基础理论\n---\n分类",
+      },
+    ],
+  });
+  assert.equal(lesson.length, 1);
+  assert.equal(lesson[0].title, "留白：空出来的地方，也在说话");
+  assert.equal(lesson[0].url, "https://57cx.github.io/aesthetics-daily/days/01/");
+  assert.equal(lesson[0].publishedAt, "2026-11-12");
+  assert.match(lesson[0].image, /aesthetics-daily\/assets\/images\/day-01\/ma-yuan-watching-deer\.jpg$/);
+  const style = chooseArticles({
+    id: "mens-style-guide",
+    topic: "穿搭",
+    repo: "57cx/mens-style-guide",
+    branch: "main",
+    pagesUrl: "https://57cx.github.io/mens-style-guide/",
+  }, {
+    markdown: [{
+      path: "src/articles/day-01-proportion.md",
+      text: `---
+title: 高瘦身材的版型与比例
+date: 2026-11-12
+summary: 181cm、72kg 空的是厚度不是腰围。
+section: 基础原理
+seasons:
+  - 秋冬
+---
+<figure><img src="./proportion.svg" alt="示意图"></figure>`,
+    }],
+  });
+  assert.equal(style.length, 1);
+  assert.equal(style[0].url, "https://57cx.github.io/mens-style-guide/articles/day-01-proportion/");
+  assert.equal(style[0].image, "https://57cx.github.io/mens-style-guide/articles/day-01-proportion/proportion.svg");
+  assert.ok(style[0].tags.includes("秋冬"));
+  const offline = chooseArticles({
+    id: "mens-style-guide",
+    topic: "穿搭",
+    repo: "57cx/mens-style-guide",
+    branch: "main",
+    pagesUrl: "",
+  }, {
+    markdown: [{
+      path: "src/articles/day-01-proportion.md",
+      text: "---\ntitle: 比例\ndate: 2026-11-12\n---\n正文",
+    }],
+  });
+  assert.match(offline[0].url, /^https:\/\/github.com\/57cx\/mens-style-guide\/blob\/main\/src\/articles\/day-01-proportion\.md$/);
+  const indexed = chooseArticles({
+    id: "notes",
+    topic: "笔记",
+    repo: "o/r",
+    branch: "main",
+    pagesUrl: "https://57cx.github.io/r/",
+  }, {
+    jsonDocs: [{
+      path: "data/posts.json",
+      text: JSON.stringify({ posts: [{ title: "第一篇", url: "/notes/1/", date: "2026-11-13", summary: "摘要" }] }),
+    }],
+  });
+  assert.equal(indexed[0].url, "https://57cx.github.io/r/notes/1/");
+  const page = chooseArticles(aesthetics, {
+    html: [{
+      path: "days/02.html",
+      text: "<html><head><title>第二天</title></head><body><p>练习重心。</p></body></html>",
+    }],
+  });
+  assert.equal(page[0].title, "第二天");
+  assert.equal(page[0].url, "https://57cx.github.io/aesthetics-daily/days/02.html");
+});
+
 test("配置只接受完整条目", () => {
   assert.throws(() => loadConfig({ hubRepo: "o/r", sites: [{ id: "a" }] }));
   const config = loadConfig({
