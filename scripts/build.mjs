@@ -91,7 +91,7 @@ function page({ data, base, title, description, current, body }) {
   <footer class="colophon">
     <p>数据更新于 ${escapeHtml(formatDateTimeZh(data.generatedAt))}（北京时间）。各老师的仓库若在此之后才有提交，会在下一次刷新汇入。</p>
     <p>每日动态只记录公开提交。没有提交写「无更新」；仓库还没建写「仓库尚未创建」；接口读失败写「暂时无法读取」，不会当成没有更新。</p>
-    <p>刷新安排在每天 08:30（北京时间），推送到 main 或手动运行工作流时也会更新。</p>
+    <p>刷新安排在每天 08:30 和 10:00（北京时间），推送到 main 或手动运行工作流时也会更新。</p>
   </footer>
   <script src="${escapeHtml(href("/assets/site.js"))}" defer></script>
 </body>
@@ -137,7 +137,12 @@ function siteCard(site, base, articles, feature) {
   if (site.status === "building" && site.articleCount > 0 && !site.pagesLive) note = `${site.articleCount} 篇已在仓库，Pages 尚未发布`;
   else if (site.status === "building" && site.pagesLive) note = "站点已发布，尚无文章";
   else if (site.status === "building") note = site.error || "仓库已在，页面与文章都还没有";
-  else if (site.status === "live") note = `${site.articleCount} 篇`;
+  else if (site.status === "live") {
+    const bits = [];
+    if (Number.isInteger(site.paperCount)) bits.push(`${site.paperCount} 篇论文`);
+    if (site.articleCount > 0) bits.push(`${site.articleCount} 篇`);
+    note = bits.join(" · ") || "已上线";
+  }
   const visual = latest?.image || asset(base, site.cover);
   const cover = visual ? `<img src="${escapeHtml(visual)}" alt="">` : "";
   if (site.status === "upcoming") {

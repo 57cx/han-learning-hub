@@ -46,11 +46,12 @@
 
 按这个顺序，命中一种就不再猜下一种：
 
-1. 仓库根目录或 `data/` 里的 `feed.json`、`articles.json`、`hub-feed.json`
-2. `feed.xml`、`rss.xml`、`atom.xml`、`index.xml`
-3. `posts/`、`articles/`、`content/`、`lessons/`、`src/content/` 下的 Markdown（跳过 `README.md` 和 `draft: true`）
-4. 根目录 `catalog.js` 里的 `weeks`（观照现在就是这种）
-5. `YYYY-MM-DD/题材名/` 文件夹里的图片或文档
+1. 仓库根目录的 `site.json`。若其中声明了 `data.daily_index` 和 `data.daily_digest`，只收录索引里的每日解读；论文数量用 `counts.papers`。某天没有解读文件，就不会出现在今日更新里。
+2. 仓库根目录或 `data/` 里的 `feed.json`、`articles.json`、`hub-feed.json`
+3. `feed.xml`、`rss.xml`、`atom.xml`、`index.xml`
+4. `posts/`、`articles/`、`content/`、`lessons/`、`src/content/` 下的 Markdown（跳过 `README.md` 和 `draft: true`）
+5. 根目录 `catalog.js` 里的 `weeks`（观照现在就是这种）
+6. `YYYY-MM-DD/题材名/` 文件夹里的图片或文档
 
 建议新站点直接放一份 `feed.json`：
 
@@ -107,6 +108,6 @@ npm start
 
 ## 自动更新
 
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml) 会在三种情况下运行：每天 08:30（北京时间）、推送到 `main`、以及手动 `workflow_dispatch`。它用默认的 `GITHUB_TOKEN` 读取公开仓库，重新生成本站，再部署到 GitHub Pages。
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) 会在这些情况下运行：每天 08:30 和 10:00（北京时间）、推送到 `main`、以及手动 `workflow_dispatch`。10:00 这一次用来收进大约 09:30 才写好的当日解读。它用默认的 `GITHUB_TOKEN` 读取公开仓库，重新生成本站，再部署到 GitHub Pages。
 
 Pages 的构建来源需要是 GitHub Actions。如果仓库还没打开这个开关，到 Settings → Pages → Build and deployment，把 Source 设为 GitHub Actions，然后重跑「发布学习馆」。
