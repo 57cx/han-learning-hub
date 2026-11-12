@@ -367,6 +367,23 @@ seasons:
   assert.equal(page[0].url, "https://57cx.github.io/aesthetics-daily/days/02.html");
 });
 
+test("有课程目录时不以零散文稿替换整门课", () => {
+  const articles = chooseArticles({
+    id: "weekly",
+    topic: "摄影审美",
+    repo: "57cx/aesthetic-weekly",
+    branch: "main",
+    pagesUrl: "https://57cx.github.io/aesthetic-weekly/",
+  }, {
+    catalogText: `window.PHOTOGRAPHY_CATALOG=${JSON.stringify({
+      weeks: [{ date: "2026-11-07", topics: [{ title: "窗光", photos: ["2026-11-07/窗光/01.jpg"] }, { title: "霜叶", photos: ["2026-11-07/霜叶/01.jpg"] }] }],
+    })};`,
+    markdown: [{ path: "2026-11-07/窗光/解读原稿.md", text: "---\ntitle: 窗光\ndate: 2026-11-07\n---\n原稿" }],
+  });
+  assert.equal(articles.length, 2);
+  assert.equal(articles[0].source, "catalog");
+});
+
 test("配置只接受完整条目", () => {
   assert.throws(() => loadConfig({ hubRepo: "o/r", sites: [{ id: "a" }] }));
   const config = loadConfig({

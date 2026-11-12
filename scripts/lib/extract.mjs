@@ -549,14 +549,14 @@ export function chooseArticles(site, input) {
     const items = parseFeedXml(input.feedXml);
     if (items) return articlesFromFeed(site, items);
   }
+  const catalog = tryParseCatalog(input.catalogText);
+  if (catalog) return articlesFromCatalog(site, catalog, input.curriculumText);
   const collected = [
     ...(input.markdown?.length ? articlesFromMarkdown(site, input.markdown) : []),
     ...(input.html?.length ? articlesFromHtml(site, input.html) : []),
     ...(input.jsonDocs?.length ? input.jsonDocs.flatMap((file) => articlesFromJsonDocument(site, file)) : []),
   ];
   if (collected.length) return dedupeArticles(collected);
-  const catalog = tryParseCatalog(input.catalogText);
-  if (catalog) return articlesFromCatalog(site, catalog, input.curriculumText);
   return articlesFromDateFolders(site, input.paths || []);
 }
 
