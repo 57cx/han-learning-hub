@@ -1,0 +1,4 @@
+node_modules/
+dist/
+data/hub.json
+.DS_Store

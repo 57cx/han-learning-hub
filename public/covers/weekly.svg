@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="观照">
+  <rect width="1200" height="800" fill="#17241f"/>
+  <rect x="150" y="120" width="900" height="560" fill="none" stroke="#e4c58a" stroke-width="2"/>
+  <rect x="190" y="160" width="500" height="360" fill="#f3efe6"/>
+  <path d="M190 160l500 360M690 160L190 520" stroke="#8d3b2c" stroke-width="1" opacity="0.45"/>
+  <circle cx="860" cy="300" r="70" fill="#e4c58a"/>
+  <text x="760" y="560" fill="#f6f0e8" font-family="Songti SC, STSong, Palatino, serif" font-size="96">观照</text>
+  <text x="764" y="610" fill="#e4c58a" font-family="Songti SC, STSong, Palatino, serif" font-size="28">每周一课</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="穿搭">
+  <rect width="1200" height="800" fill="#241f1b"/>
+  <rect x="150" y="150" width="280" height="500" fill="none" stroke="#e6d3b4" stroke-width="2"/>
+  <path d="M290 150v500" stroke="#e6d3b4" stroke-width="1"/>
+  <path d="M150 360h280" stroke="#c4a574" stroke-width="8"/>
+  <rect x="620" y="190" width="390" height="250" fill="#c4a574"/>
+  <text x="620" y="560" fill="#f6f0e8" font-family="Songti SC, STSong, Palatino, serif" font-size="108">穿搭</text>
+  <text x="624" y="620" fill="#c4a574" font-family="Songti SC, STSong, Palatino, serif" font-size="28">男生穿搭</text>
+</svg>
